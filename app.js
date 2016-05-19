@@ -40,7 +40,7 @@ if(POW_METER!=0) {
 	});
 }
 
-for (var invt=1; invt<=INV_NUMB; invt++){
+for (var invt=1; invt<=INV_NUMB+1; invt++){
 	request(SOLAR_HOST_URL+"?invtnum="+invt, function (error, response, body) {
 	  if (!error && response.statusCode == 200) {
 	    var dati = JSON.parse(body)[0];
@@ -62,9 +62,8 @@ for (var invt=1; invt<=INV_NUMB; invt++){
 		}
 	  }
 	});
-};
-
-if (TEST) {
+	if(invt==INV_NUMB+1){
+		if (TEST) {
 	console.log("WH_TOT: "+WH_TOT);
 	console.log("W_TOT: "+W_TOT);
 }
@@ -93,6 +92,10 @@ update_domoticz(153, WH_TOT+P1_WH);
 update_domoticz(154, W_TOT+";"+WH_TOT);
 update_domoticz(155, W_INVT_1+";"+WH_INVT_1);
 update_domoticz(156, W_INVT_2+";"+WH_INVT_2);
+
+	}
+};
+
 
 function processG1P(invt, value){
     if (invt==1) {
