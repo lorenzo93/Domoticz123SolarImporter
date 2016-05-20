@@ -20,7 +20,7 @@ config.IDX = {
 		"GA" : 0, //		General		Current		0.600 A		
 		"FRQ" : 0, //		Power Frequency, I don't know which type!
 		"EFF" : 0, //		General		Percentage	81.50%
-		"INVT" : 0, //		Temperature
+		"INVT" : 0, //		Temp		TFA 30.3133	60.0°C
 		"Total_Power" : 0 //General		kWh			8549.873 kWh
 	}
 };
@@ -32,7 +32,7 @@ config.solar_Power_IDX = 0; //          General     kWh         12769.776 kWh
 config.pow_Meter_IDX = 0;
 
 //Developing variables
-config.DEBUG = true;
-config.TEST = true;
+config.DEBUG = true; //Write to console.log all the datas
+config.TEST = true; //Dry-run, it just read from 123Solar, does NOT update any value on Domoticz
 
 module.exports = config;

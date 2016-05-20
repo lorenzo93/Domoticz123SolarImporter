@@ -34,7 +34,7 @@ function ciclo(invNumb){
 				    update_domoticz(config.IDX[invNumb].I2V, dati.I2V);
 				    update_domoticz(config.IDX[invNumb].I1A, dati.I1A);
 				    update_domoticz(config.IDX[invNumb].I2A, dati.I2A);
-				    processGP(invNumb, dati.GP);
+				    processGP(dati.GP);
 				    update_domoticz(config.IDX[invNumb].GV, dati.GV);
 				    update_domoticz(config.IDX[invNumb].GA, dati.GA);
 				    update_domoticz(config.IDX[invNumb].FRQ, dati.FRQ);
@@ -55,39 +55,51 @@ function ciclo(invNumb){
 	}
 }
 
+// get the latest date in case of connection problems to 1 of the inverters, it might be down
+function checkWH(index){
+	if(index<=Object.keys(config.IDX).length) {
+		if(typeof(WH_TOT[index]) == 'undefined' || WH_TOT[index] == 0){
+			request(config.DOMOTICZ_HOST_URL+"/json.htm?type=devices&rid="+config.IDX[index].Total_Power, function (error, response, body) {
+				if (!error && response.statusCode == 200) {
+					var data = JSON.parse(body);
+					if(data["status"]=="OK"){
+						WH_TOT[1] = data["result"]["Data"];
+					} else {
+						if(DEBUG){
+							console.log("Error retriving data from Domoticz! Inverter numb " + index);
+						}
+					}
+				} else {
+					if(DEBUG){
+						console.log("Error retriving data from Domoticz, maybe offline!");
+					}
+				}
+			});
+		} else {
+			checkWH(index+1);
+		}
+	} else {
+		if (config.DEBUG){
+			console.log("WH_TOT: "+WH_TOT.reduce((pv, cv) => pv+cv, 0));
+		}
 
-function fine(){
-	if (config.TEST) {
-		console.log("WH_TOT: "+WH_TOT.reduce((pv, cv) => pv+cv, 0));
-		console.log("W_TOT: "+W_TOT);
-		console.log("WH_TOT is "+WH_TOT.length+" long!");
+		update_domoticz(config.Power_Consumption_IDX, (WH_TOT.reduce((pv, cv) => pv+cv, 0))+P1_WH);
+		update_domoticz(config.Solar_Power_IDX, W_TOT+";"+(WH_TOT.reduce((pv, cv) => pv+cv, 0)));
 	}
-
-	if (WH_TOT.length != Object.keys(config.IDX).length+1 || WH_TOT.reduce((pv, cv) => pv+cv, 0) == 0){
-		// get the latest date in case of connection problems to 1 of the inverters, it might be down, don't forget to chage the right IDX numbers
-		request(config.DOMOTICZ_HOST_URL+"/json.htm?type=devices&rid="+155, function (error, response, body) {
-			if (!error && response.statusCode == 200) {
-				WH_INVT_1 = JSON.parse(body)["result"]["Data"];
-			}
-		});
-		request(config.DOMOTICZ_HOST_URL+"/json.htm?type=devices&rid="+156, function (error, response, body) {
-			if (!error && response.statusCode == 200) {
-				WH_INVT_2 = JSON.parse(body)["result"]["Data"];
-			}
-		});
-		WH_TOT[1] = WH_INVT_1;
-		WH_TOT[2] = WH_INVT_2;
-	}
-	if (config.TEST){
-		console.log("WH_TOT: "+WH_TOT.reduce((pv, cv) => pv+cv, 0));
-	}
-
-	update_domoticz(config.Power_Consumption_IDX, (WH_TOT.reduce((pv, cv) => pv+cv, 0))+P1_WH);
-	update_domoticz(config.Solar_Power_IDX, W_TOT+";"+(WH_TOT.reduce((pv, cv) => pv+cv, 0)));
 }
 
 
-function processGP(invt, value){
+function fine(){
+	if (config.DEBUG) {
+		console.log("WH_TOT: "+WH_TOT.reduce((pv, cv) => pv+cv, 0));
+		console.log("W_TOT: "+W_TOT);
+	}
+
+	checkWH(1);
+}
+
+
+function processGP(value){
     W_TOT+= value;
 }
 
