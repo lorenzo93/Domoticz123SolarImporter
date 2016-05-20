@@ -1,19 +1,20 @@
 {
   "name": "Domoticz123SolarImporter",
-  "version": "0.0.5",
-  "description" : "A Node.js tool that import into Domoticz 123Solar values through REST API",
-  "author" : "Lorenzo Ariemma",
-  "repository" : {
-  	"type" : "git",
-  	"url" : "https://github.com/lorenzo93/Domoticz123SolarImporter"
+  "version": "0.0.8",
+  "description": "A Node.js tool that import into Domoticz 123Solar values through REST API",
+  "author": "Lorenzo Ariemma",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lorenzo93/Domoticz123SolarImporter"
   },
-  "license" : "GNU",
-  "private" : "true",
-  "analyze" : true,
+  "license": "GNU",
+  "private": "true",
+  "analyze": true,
   "scripts": {
     "start": "node app.js"
   },
   "dependencies": {
+    "client-http": "0.0.7",
     "request": "^2.72.0"
   }
 }

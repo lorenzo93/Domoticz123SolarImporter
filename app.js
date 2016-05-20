@@ -1,13 +1,32 @@
 var request = require('request');
 
 // Your 123solar API link
-var SOLAR_HOST_URL="http://lollo93.no-ip.biz/123solar/programs/programlive.php";
+var SOLAR_HOST_URL="http://192.168.0.250/123solar/programs/programlive.php";
 
 // Your Domoticz ip and port, remember to NOT put trailing slash
 var DOMOTICZ_HOST_URL="http://192.168.0.12:8081";
 
-// Inverters Number, how many inverters do you have in 123Solar?
-var INV_NUMB=1;
+// IDX Numbers JSON, replicate all the "1" part if you have more than 1 inverter
+var IDX = {
+	"1" : {
+		"I1P" : 0,
+		"I1V" : 0,
+		"I2V" : 0,
+		"I2P" : 0,
+		"I1A" : 0,
+		"I2A" : 0,
+		"GP" : 0,
+		"GV" : 0,
+		"GA" : 0,
+		"FRQ" : 0,
+		"EFF" : 0,
+		"INVT" : 0,
+		"Total_Power" : 0 //   General     kWh          8549.873 kWh
+	}
+};
+
+var Power_Consumption_IDX = 0; //   RFXMeter    counter     16257.239 kWh
+var Solar_Power_IDX = 0; //          General     kWh         12769.776 kWh
 
 //Power Meter IDX, if you have one, so Domoticz can calculate power usage. 0 if you don't have
 var POW_METER = 0;
@@ -17,15 +36,9 @@ var DEBUG = true;
 var TEST = true;
 
 //Maybe useless variables
-var WH_INVT_1 = 0;
-var WH_INVT_2 = 0;
 var PRINT_WH_TOT = 0;
 var WH_TOT = 0;
 var W_TOT = 0;
-var W_INVT_1 = 0;
-var W_INVT_2 = 0;
-
-var IDX = {};
 
 
 //Code starts from here, DO NOT touch code after this line if you don't know that you are doing
@@ -39,80 +52,79 @@ if(POW_METER!=0) {
 		}
 	});
 }
+ciclo(1);
 
-for (var invt=1; invt<=INV_NUMB+1; invt++){
-	request(SOLAR_HOST_URL+"?invtnum="+invt, function (error, response, body) {
-	  if (!error && response.statusCode == 200) {
-	    var dati = JSON.parse(body)[0];
-	    console.log(dati);
-	    if(dati.awdate != "--:--"){
-	    	console.log("processo i dati");
-		    processKWHT(invt, dati[KWHT]);
-		    update_domoticz(IDX.I1P[invt], dati[I1P]);
-		    update_domoticz(IDX.I2P[invt], dati[I2P]);
-		    update_domoticz(IDX.I1V[invt], dati[I1V]);
-		    update_domoticz(IDX.I2V[invt], dati[I2V]);
-		    update_domoticz(IDX.I1A[invt], dati[I1A]);
-		    update_domoticz(IDX.I2A[invt], dati[I2A]);
-		    processG1P(invt, dati[G1P]);
-		    update_domoticz(IDX.G1V[invt], dati[G1V]);
-		    update_domoticz(IDX.G1A[invt], dati[G1A]);
-		    update_domoticz(IDX.FRQ[invt], dati[FRQ]);
-		    update_domoticz(IDX.EFF[invt], dati[EFF]);
-		}
-	  }
-	});
-	if(invt==INV_NUMB+1){
-		if (TEST) {
-	console.log("WH_TOT: "+WH_TOT);
-	console.log("W_TOT: "+W_TOT);
+function ciclo(invNumb){
+	if(invNumb<Object.keys(IDX).length+1){
+		request(SOLAR_HOST_URL+"?invtnum="+invNumb, function (error, response, body) {
+		  if (!error) {
+		    var dati = JSON.parse(body)[0];
+		    console.log(dati);
+		    if(dati.awdate != "--:--"){
+			    processKWHT(invNumb, dati.KWHT);
+			    update_domoticz(IDX[invNumb].I1P, dati.I1P);
+			    update_domoticz(IDX[invNumb].I2P, dati.I2P);
+			    update_domoticz(IDX[invNumb].I1V, dati.I1V);
+			    update_domoticz(IDX[invNumb].I2V, dati.I2V);
+			    update_domoticz(IDX[invNumb].I1A, dati.I1A);
+			    update_domoticz(IDX[invNumb].I2A, dati.I2A);
+			    processGP(invNumb, dati.GP);
+			    update_domoticz(IDX[invNumb].GV, dati.GV);
+			    update_domoticz(IDX[invNumb].GA, dati.GA);
+			    update_domoticz(IDX[invNumb].FRQ, dati.FRQ);
+			    update_domoticz(IDX[invNumb].EFF, dati.EFF);
+			    update_domoticz(IDX[invNumb].INVT, dati.INVT);
+			    update_domoticz(IDX[invNumb].Total_Power, dati.GP+";"+(dati.KWHT*1000));
+			}
+		  } else {
+		  	console.log("ERRORE");
+		  }
+		  ciclo(invNumb+1);
+		});
+	} else {
+		fine();
+	}
 }
 
-if (PRINT_WH_TOT != INV_NUMB || WH_TOT == 0){
-	// get the latest date in case of connection problems to 1 of the inverters, it might be down, don't forget to chage the right IDX numbers
-	request(DOMOTICZ_HOST_URL+"/json.htm?type=devices&rid="+155, function (error, response, body) {
-		if (!error && response.statusCode == 200) {
-			WH_INVT_1 = JSON.parse(body)["result"]["Data"];
-		}
-	});
-	request(DOMOTICZ_HOST_URL+"/json.htm?type=devices&rid="+156, function (error, response, body) {
-		if (!error && response.statusCode == 200) {
-			WH_INVT_2 = JSON.parse(body)["result"]["Data"];
-		}
-	});
-	WH_TOT = WH_INVT_1+WH_INVT_2;
+
+function fine(){
+	console.log("Lavoro con i dati");
+	if (TEST) {
+		console.log("WH_TOT: "+WH_TOT);
+		console.log("W_TOT: "+W_TOT);
+	}
+
+	if (PRINT_WH_TOT != Object.keys(IDX).length || WH_TOT == 0){
+		// get the latest date in case of connection problems to 1 of the inverters, it might be down, don't forget to chage the right IDX numbers
+		request(DOMOTICZ_HOST_URL+"/json.htm?type=devices&rid="+155, function (error, response, body) {
+			if (!error && response.statusCode == 200) {
+				WH_INVT_1 = JSON.parse(body)["result"]["Data"];
+			}
+		});
+		request(DOMOTICZ_HOST_URL+"/json.htm?type=devices&rid="+156, function (error, response, body) {
+			if (!error && response.statusCode == 200) {
+				WH_INVT_2 = JSON.parse(body)["result"]["Data"];
+			}
+		});
+		WH_TOT = WH_INVT_1+WH_INVT_2;
+	}
 	if (TEST){
-		console.log("WH_INVT_1: "+WH_INVT_1);
-		console.log("WH_INVT_2: "+WH_INVT_2);
 		console.log("WH_TOT: "+WH_TOT);
 	}
+
+	update_domoticz(Power_Consumption_IDX, WH_TOT+P1_WH);
+	update_domoticz(Solar_Power_IDX, W_TOT+";"+WH_TOT);
+	
+
 }
 
-update_domoticz(153, WH_TOT+P1_WH);
-update_domoticz(154, W_TOT+";"+WH_TOT);
-update_domoticz(155, W_INVT_1+";"+WH_INVT_1);
-update_domoticz(156, W_INVT_2+";"+WH_INVT_2);
 
-	}
-};
-
-
-function processG1P(invt, value){
-    if (invt==1) {
-        W_INVT_1=value;
-    } else {
-		W_INVT_2=value;
-    }
+function processGP(invt, value){
     W_TOT+= value;
 }
 
 function processKWHT(invt, value){
     if (value > 0){
-    	if (invt == 1) {
-	        WH_INVT_1 = value*1000;
-    	} else {
-	        WH_INVT_2= value*1000;
-    	}
 	    WH_TOT += value;
 	    PRINT_WH_TOT++;
     } else {
@@ -120,14 +132,14 @@ function processKWHT(invt, value){
     }
 }
 
-function update_domoticz(idx, dat) {
-	if (typeof(dat)!='undefined' && dat.length!=0 && typeof(idx)!= 'undefined' &&idx!=0) {
+function update_domoticz(actualIdx, dat) {
+	if (typeof(dat)!='undefined' && dat.length!=0 && typeof(actualIdx)!= 'undefined' &&actualIdx!=0) {
     	if (TEST) {
-		    console.log("Updating: IDX: "+idx+" DAT: "+dat);
+		    console.log("Updating: IDX: "+actualIdx+" DAT: "+dat);
     	} else {
 		    if (DEBUG) {
 		    	var string = "$(date '+%y-%m-%d %H:%M') Update: IDX:${IDX} DAT:${DAT} : ";
-		    	request(DOMOTICZ_HOST_URL+"/json.htm?type=command&param=udevice&idx="+idx+"&nvalue=0&svalue="+dat, function (error, response, body) {
+		    	request(DOMOTICZ_HOST_URL+"/json.htm?type=command&param=udevice&idx="+actualIdx+"&nvalue=0&svalue="+dat, function (error, response, body) {
 					if (!error && response.statusCode == 200) {
 						string += "OK";
 						console.log(string);
@@ -138,12 +150,12 @@ function update_domoticz(idx, dat) {
 					}
 				});
 		    } else {
-		    	request(DOMOTICZ_HOST_URL+"/json.htm?type=command&param=udevice&idx="+idx+"&nvalue=0&svalue="+dat);
+		    	request(DOMOTICZ_HOST_URL+"/json.htm?type=command&param=udevice&idx="+actualIdx+"&nvalue=0&svalue="+dat);
 		    }
 		}
 	} else {
     	if (DEBUG) {
-    		console.log("NOT Updated: IDX: "+idx+" DAT: "+dat);
+    		console.log("NOT Updated: IDX: "+actualIdx+" DAT: "+dat);
   		}
   	}
 }
