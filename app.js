@@ -83,8 +83,8 @@ function checkWH(index){
 			console.log("WH_TOT: "+WH_TOT.reduce((pv, cv) => pv+cv, 0));
 		}
 
-		update_domoticz(config.Power_Consumption_IDX, (WH_TOT.reduce((pv, cv) => pv+cv, 0))+P1_WH);
-		update_domoticz(config.Solar_Power_IDX, W_TOT+";"+(WH_TOT.reduce((pv, cv) => pv+cv, 0)));
+		update_domoticz(config.power_Consumption_IDX, (WH_TOT.reduce((pv, cv) => pv+cv, 0))+P1_WH);
+		update_domoticz(config.solar_Power_IDX, W_TOT+";"+(WH_TOT.reduce((pv, cv) => pv+cv, 0)));
 	}
 }
 
