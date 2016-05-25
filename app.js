@@ -9,7 +9,7 @@ WH_TOT[0] = 0;
 var W_TOT = 0;
 
 // Getting power usage
-if(config.Pow_Meter_IDX!=0) {
+if(typeof(config.pow_Meter_IDX) != 'undefined' && config.pow_Meter_IDX!=0) {
 	request(config.DOMOTICZ_HOST_URL+"/json.htm?type=devices&rid="+config.Pow_Meter_IDX, function (error, response, body) {
 		if (!error && response.statusCode == 200) {
 			P1_WH = JSON.parse(body)["result"]["Data"];
@@ -115,7 +115,7 @@ function update_domoticz(actualIdx, dat) {
 		    console.log("Updating: IDX: "+actualIdx+" DAT: "+dat);
     	} else {
 		    if (config.DEBUG) {
-		    	var string = "$(date '+%y-%m-%d %H:%M') Update: IDX:${IDX} DAT:${DAT} : ";
+		    	var string = "Update: IDX:"+actualIdx+" DAT:"+dat+" : ";
 		    	request(config.DOMOTICZ_HOST_URL+"/json.htm?type=command&param=udevice&idx="+actualIdx+"&nvalue=0&svalue="+dat, function (error, response, body) {
 					if (!error && response.statusCode == 200) {
 						string += "OK";
