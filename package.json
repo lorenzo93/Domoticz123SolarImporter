@@ -1,6 +1,6 @@
 {
   "name": "Domoticz123SolarImporter",
-  "version": "0.0.8",
+  "version": "0.1.0",
   "description": "A Node.js tool that import into Domoticz 123Solar values through REST API",
   "author": "Lorenzo Ariemma",
   "repository": {

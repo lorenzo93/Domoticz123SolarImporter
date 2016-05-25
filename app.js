@@ -6,17 +6,28 @@ var P1_WH = 0;
 var WH_TOT = [];
 WH_TOT[0] = 0;
 var W_TOT = 0;
+var invtOffline = [];
 
 
 var job = new CronJob({
   cronTime: config.cron,
   onTick: function() {
-    getPowerUsage();
-	ciclo(1);
+  	restartCycle(function(){
+    	getPowerUsage();
+		ciclo(1);
+	});
   },
   start: false,
 });
 job.start();
+
+function restartCycle(cb){
+	P1_WH = 0;
+	WH_TOT = [];
+	WH_TOT[0] = 0;
+	W_TOT = 0;
+	cb();
+}
 
 function getPowerUsage(){
 	// Getting power usage
@@ -32,12 +43,13 @@ function getPowerUsage(){
 function ciclo(invNumb){
 	if(invNumb<Object.keys(config.IDX).length+1){
 		request(config.SOLAR_HOST_URL+"?invtnum="+invNumb, function (error, response, body) {
-			if (!error) {
+			if (!error && response.statusCode == 200) {
 		    	var dati = JSON.parse(body)[0];
 		    	if(config.DEBUG){
 			    	console.log(dati);
 				}
 			    if(dati.awdate != "--:--"){
+			    	invtOffline[invNumb] = false;
 				    processKWHT(invNumb, dati.KWHT);
 				    update_domoticz(config.IDX[invNumb].I1P, dati.I1P);
 				    update_domoticz(config.IDX[invNumb].I2P, dati.I2P);
@@ -52,7 +64,31 @@ function ciclo(invNumb){
 				    update_domoticz(config.IDX[invNumb].EFF, dati.EFF);
 				    update_domoticz(config.IDX[invNumb].INVT, dati.INVT);
 				    update_domoticz(config.IDX[invNumb].Total_Power, dati.GP+";"+(dati.KWHT*1000));
-				}
+				}  else {
+					if(config.DEBUG) {
+			  			console.log("ERROR, the inverter "+invNumb+" is offline!");
+			  		}
+					if(!invtOffline[invNumb]){
+						invtOffline[invNumb] = true;
+						processKWHT(invNumb, 0);
+					    update_domoticz(config.IDX[invNumb].I1P, 0);
+					    update_domoticz(config.IDX[invNumb].I2P, 0);
+					    update_domoticz(config.IDX[invNumb].I1V, 0);
+					    update_domoticz(config.IDX[invNumb].I2V, 0);
+					    update_domoticz(config.IDX[invNumb].I1A, 0);
+					    update_domoticz(config.IDX[invNumb].I2A, 0);
+					    processGP(invNumb, 0);
+					    update_domoticz(config.IDX[invNumb].GV, 0);
+					    update_domoticz(config.IDX[invNumb].GA, 0);
+					    update_domoticz(config.IDX[invNumb].FRQ, 0);
+					    update_domoticz(config.IDX[invNumb].EFF, 0);
+					    update_domoticz(config.IDX[invNumb].INVT, 0);
+					    if(config.DEBUG) {
+			  				console.log("First time the inverter "+invNumb+" is offline, pushing 0!");
+			  			}
+					}			
+
+			 	}
 			} else {
 				invNumb = Object.keys(config.IDX).length+200;
 				if(config.DEBUG) {
@@ -66,7 +102,7 @@ function ciclo(invNumb){
 	}
 }
 
-// get the latest date in case of connection problems to 1 of the inverters, it might be down
+// get the latest data in case of connection problems to one of the inverters, it might be down
 function checkWH(index){
 	if(index<=Object.keys(config.IDX).length) {
 		if(typeof(WH_TOT[index]) == 'undefined' || WH_TOT[index] == 0){
@@ -74,20 +110,22 @@ function checkWH(index){
 				if (!error && response.statusCode == 200) {
 					var data = JSON.parse(body);
 					if(data["status"]=="OK"){
-						WH_TOT[1] = data["result"]["Data"];
+						WH_TOT[index] = Number(data["result"][0]["Data"].slice(0, -4));
+						if(config.DEBUG){
+							console.log("Retrived data from Domoticz! Inverter numb " + index + " dat= "+WH_TOT[index]);
+						}
 					} else {
-						if(DEBUG){
+						if(config.DEBUG){
 							console.log("Error retriving data from Domoticz! Inverter numb " + index);
 						}
 					}
 				} else {
-					if(DEBUG){
+					if(config.DEBUG){
 						console.log("Error retriving data from Domoticz, maybe offline!");
 					}
 				}
+				checkWH(index+1);
 			});
-		} else {
-			checkWH(index+1);
 		}
 	} else {
 		if (config.DEBUG){
@@ -121,7 +159,7 @@ function processKWHT(invt, value){
 }
 
 function update_domoticz(actualIdx, dat) {
-	if (typeof(dat)!='undefined' && dat.length!=0 && typeof(actualIdx)!= 'undefined' &&actualIdx!=0) {
+	if (typeof(dat)!='undefined' && dat.length!=0 && typeof(actualIdx)!= 'undefined' && actualIdx!=0) {
     	if (config.TEST) {
 		    console.log("Updating: IDX: "+actualIdx+" DAT: "+dat);
     	} else {
