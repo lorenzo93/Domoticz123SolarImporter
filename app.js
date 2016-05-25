@@ -1,22 +1,33 @@
 var request = require('request');
-
+var CronJob = require('cron').CronJob;
 var config = require('./settings');
 
-//Code starts from here, DO NOT touch code after this line if you don't know that you are doing
 var P1_WH = 0;
 var WH_TOT = [];
 WH_TOT[0] = 0;
 var W_TOT = 0;
 
-// Getting power usage
-if(typeof(config.pow_Meter_IDX) != 'undefined' && config.pow_Meter_IDX!=0) {
-	request(config.DOMOTICZ_HOST_URL+"/json.htm?type=devices&rid="+config.Pow_Meter_IDX, function (error, response, body) {
-		if (!error && response.statusCode == 200) {
-			P1_WH = JSON.parse(body)["result"]["Data"];
-		}
-	});
+
+var job = new CronJob({
+  cronTime: config.cron,
+  onTick: function() {
+    getPowerUsage();
+	ciclo(1);
+  },
+  start: false,
+});
+job.start();
+
+function getPowerUsage(){
+	// Getting power usage
+	if(typeof(config.pow_Meter_IDX) != 'undefined' && config.pow_Meter_IDX!=0) {
+		request(config.DOMOTICZ_HOST_URL+"/json.htm?type=devices&rid="+config.Pow_Meter_IDX, function (error, response, body) {
+			if (!error && response.statusCode == 200) {
+				P1_WH = JSON.parse(body)["result"]["Data"];
+			}
+		});
+	}
 }
-ciclo(1);
 
 function ciclo(invNumb){
 	if(invNumb<Object.keys(config.IDX).length+1){
@@ -34,7 +45,7 @@ function ciclo(invNumb){
 				    update_domoticz(config.IDX[invNumb].I2V, dati.I2V);
 				    update_domoticz(config.IDX[invNumb].I1A, dati.I1A);
 				    update_domoticz(config.IDX[invNumb].I2A, dati.I2A);
-				    processGP(dati.GP);
+				    processGP(invNumb, dati.GP);
 				    update_domoticz(config.IDX[invNumb].GV, dati.GV);
 				    update_domoticz(config.IDX[invNumb].GA, dati.GA);
 				    update_domoticz(config.IDX[invNumb].FRQ, dati.FRQ);
@@ -99,7 +110,7 @@ function fine(){
 }
 
 
-function processGP(value){
+function processGP(invt, value){
     W_TOT+= value;
 }
 
@@ -117,7 +128,7 @@ function update_domoticz(actualIdx, dat) {
 		    if (config.DEBUG) {
 		    	var string = "Update: IDX:"+actualIdx+" DAT:"+dat+" : ";
 		    	request(config.DOMOTICZ_HOST_URL+"/json.htm?type=command&param=udevice&idx="+actualIdx+"&nvalue=0&svalue="+dat, function (error, response, body) {
-					if (!error && response.statusCode == 200) {
+					if (!error && response.statusCode == 200 && JSON.parse(body)["status"] == 'OK') {
 						string += "OK";
 						console.log(string);
 					} else {

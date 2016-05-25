@@ -12,13 +12,9 @@ From the shell go into the folder and type
 ```
 npm install
 ```
-After the process finishes change settings, according to yours in "config.js" file
+After the process finishes change settings, according to yours, in "config.js" file
 Then, inside the shell, write
 ```
-crontab -e
+npm start
 ```
-
-and add this line at the end
-```
-*/5 * * * * /usr/local/bin/node /your/path/to/the/script/app.js
-```
+to start the script.
