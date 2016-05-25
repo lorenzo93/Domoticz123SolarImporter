@@ -16,9 +16,9 @@ Then, inside the shell, write
 sudo npm install forever -g
 ```
 to install forever, a software that keeps the script running and restart it if there are some problems.
-Once installed just type (to run it from root, otherwise just change the username)
+Once installed just type
 ```
-sudo crontab -u root -e
+crontab -e
 ```
 and add at the end of the file
 ```
